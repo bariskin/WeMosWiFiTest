@@ -33,26 +33,57 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-
+#include <FS.h>
+#include <ESP8266FtpServer.h>
 #ifndef APSSID
 #define APSSID "ESPap"
 #define APPSK  "thereisnospoon"
 #endif
 
 /* Set these to your desired credentials. */
+const byte relay1 = 0;   //GPIO0
+//const byte relay2 = 3;
+//const byte relay3 = 5;
 const char *ssid = APSSID;
 const char *password = APPSK;
 
-ESP8266WebServer server(80);
+ESP8266WebServer HTTP(80);
+FtpServer FtpServer;
 
 /* Just a little test message.  Go to http://192.168.4.1 in a web browser
    connected to this access point to see it.
 */
-void handleRoot() {
-  server.send(200, "text/html", "<h1>You are connected</h1>");
+//void handleRoot() {
+//  server.send(200, "text/html", "<h1>You are connected</h1>");
+//  server.send(200, "text/html", "<h1> Tast input pin value:  </h1>");
+//}
+
+
+String relay_switch(void){
+ 
+ byte state;
+  if(digitalRead(relay1)){
+      state = 0;
+    }
+    else {
+      state = 1;
+     }
+
+   digitalWrite(relay1,state);
+   Serial.println(String(state));
+   return String(state);
 }
 
+
 void setup() {
+
+  pinMode(relay1,OUTPUT);
+  digitalWrite(relay1, LOW);
+  //pinMode(relay2,OUTPUT);
+  //digitalWrite(relay2, LOW);
+  //pinMode(relay3,OUTPUT);
+  //digitalWrite(relay3, LOW);
+  
   delay(1000);
   Serial.begin(115200);
   Serial.println();
@@ -60,14 +91,26 @@ void setup() {
   /* You can remove the password parameter if you want the AP to be open. */
   WiFi.softAP(ssid, password);
 
+  SPIFFS.begin(); // init file system
+  HTTP.begin();   // init web server 
+  //FtpServer.begin("relay", "relay");
+  
+  Serial.print("\nMy IP to connect via Web_bowser or FTP");
   IPAddress myIP = WiFi.softAPIP();
+  Serial.print("\n");
+  
   Serial.print("AP IP address: ");
   Serial.println(myIP);
-  server.on("/", handleRoot);
-  server.begin();
-  Serial.println("HTTP server started");
+ // server.on("/", handleRoot);
+ // server.begin();
+ // Serial.println("HTTP server started");
+
+ HTTP.on("/relay_switch", [](){
+    HTTP.send(200,"text/plain", relay_switch());
+  });
 }
 
 void loop() {
-  server.handleClient();
+    HTTP.handleClient();
+
 }
