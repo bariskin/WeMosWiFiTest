@@ -37,7 +37,7 @@
 #include <ESP8266FtpServer.h>
 #ifndef APSSID
 #define APSSID "ESPap"
-#define APPSK  "thereisnospoon"
+#define APPSK  "bariskin2021"
 #endif
 
 /* Set these to your desired credentials. */
