@@ -48,7 +48,7 @@ const char *ssid = APSSID;
 const char *password = APPSK;
 
 ESP8266WebServer HTTP(80);
-FtpServer FtpServer;
+FtpServer FtpServer; // модуль для обработки файлов через ftp, port 21
 
 /* Just a little test message.  Go to http://192.168.4.1 in a web browser
    connected to this access point to see it.
@@ -57,23 +57,6 @@ FtpServer FtpServer;
 //  server.send(200, "text/html", "<h1>You are connected</h1>");
 //  server.send(200, "text/html", "<h1> Tast input pin value:  </h1>");
 //}
-
-
-String relay_switch(void){
- 
- byte state;
-  if(digitalRead(relay1)){
-      state = 0;
-    }
-    else {
-      state = 1;
-     }
-
-   digitalWrite(relay1,state);
-   Serial.println(String(state));
-   return String(state);
-}
-
 
 void setup() {
 
@@ -93,7 +76,7 @@ void setup() {
 
   SPIFFS.begin(); // init file system
   HTTP.begin();   // init web server 
-  //FtpServer.begin("relay", "relay");
+  FtpServer.begin("relay", "relay");
   
   Serial.print("\nMy IP to connect via Web_bowser or FTP");
   IPAddress myIP = WiFi.softAPIP();
@@ -101,16 +84,92 @@ void setup() {
   
   Serial.print("AP IP address: ");
   Serial.println(myIP);
- // server.on("/", handleRoot);
- // server.begin();
- // Serial.println("HTTP server started");
-
+  
  HTTP.on("/relay_switch", [](){
     HTTP.send(200,"text/plain", relay_switch());
   });
+
+ HTTP.on("/relay_status", [](){
+    HTTP.send(200,"text/plain", relay_status());
+  }); 
+ HTTP.onNotFound([](){
+     if (!handleFileRead(HTTP.uri())){
+        HTTP.send(404,"text/plain", "Not Found");
+     }
+  });
+  
 }
 
 void loop() {
     HTTP.handleClient();
-
+    FtpServer.handleFTP();
 }
+
+String relay_switch(void){
+ byte state;
+  if(digitalRead(relay1)){
+      state = 0;
+    }
+    else {
+      state = 1;
+     }
+
+   digitalWrite(relay1,state);
+   Serial.println(String(state));
+   return String(state);
+}
+
+String relay_status(void){
+  byte state;
+   state = digitalRead(relay1);
+  return String(state);
+}
+
+bool handleFileRead(String path){
+  
+  if(path.endsWith("/")) {
+       path += "index.html";
+     }
+     String contentType = getContentType(path);
+     
+     if(SPIFFS.exists(path)){     
+      
+       File file = SPIFFS.open(path ,"r");
+       size_t sent = HTTP.streamFile(file,contentType); // выводим содержимое по HTTP
+      
+       file.close();
+       return true;
+      }
+  return false;
+ }
+ 
+String getContentType(String filename){
+  
+  if(filename.endsWith(".html")){ 
+     return "text/html";
+  }
+   else if(filename.endsWith(".css")) {
+    return "text/css";
+   }
+   else if(filename.endsWith(".js")) {
+    return "application/javascript";
+   }
+   else if(filename.endsWith(".png")) {
+    return "image/png";
+   }
+   else if(filename.endsWith(".jpg")) {
+    return "image/jpeg";
+   }
+   else if(filename.endsWith(".jpg")) {
+    return "image/jpeg";
+   }
+   else if(filename.endsWith(".gif")) {
+    return "image/gif";
+   }
+   else if(filename.endsWith(".ico")) {
+    return "image/x-coin";
+   }
+   
+   return "text/plain";
+
+  }
